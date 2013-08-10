@@ -7,6 +7,8 @@ package Main;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.commons.io.FileUtils;
 
 /**
@@ -16,6 +18,7 @@ import org.apache.commons.io.FileUtils;
 public class Controller {
     public static String database = "C:/Users/admin/Desktop/Database/";
     public static String insert = "C:/Users/admin/Desktop/Insert/";
+    public static String faculty = "C:/Users/admin/Desktop/96 Faculty/";
     
     public static void main(String[] args) throws FileNotFoundException, IOException {
         List<String> univs = getKeywords("Elite96.txt");
@@ -95,13 +98,21 @@ public class Controller {
         }
         sb.append("];\n\n");
         List<List<String>> departments = getDepartments(filename);
+        int index = 0;
+        StringBuilder deptSB = new StringBuilder();
         if (departments != null) {
             for (List<String> dept : departments) {
                 if (dept.size() == 1) {
                     sb.append("insert Faculties \"" + dept.get(0).split("==")[1] + "\" (\"" + univName + "\")[\n");
                     String schoolUrl = dept.get(0).split("==")[2];
+                    String schoolName = dept.get(0).split("==")[1];
                     if (!schoolUrl.equals("null")) {
                         sb.append("@website:\"" + schoolUrl + "\",\n");
+                    }
+                    String[] tokens = dept.get(0).split("==");
+                    if (tokens.length == 4 && !tokens[3].equals("null")) {
+                        insertSchoolFaculty(sb, univName, schoolName, index, filename);
+                        index++;
                     }
                     sb.append("];\n\n");
                 } else {
@@ -121,6 +132,91 @@ public class Controller {
             }
         }
         FileUtils.write(new File(insert+filename), sb.toString());
+    }
+    
+    public static void insertSchoolFaculty(StringBuilder sb, String univName, String schoolName, int index, String filename){
+        String folder = filename.split("\\.")[0];
+        if (!new File(faculty+folder+"/"+index+".txt").exists()) return;
+        sb.append("role Academics Faculty ->\n");
+        sb.append("{\n");
+        sb.append("Professor:{\n");
+        insertPersons(sb, folder, index);
+        sb.append("}(\""+schoolName+"("+univName+")\")\n");
+        sb.append("}\n");
+    }
+    
+    public static void insertDeptFaculty(StringBuilder sb, String univName, String schoolName, String deptName, int index, String filename){
+        String folder = filename.split("\\.")[0];
+        if (!new File(faculty+folder+"/"+index+".txt").exists()) return;
+        sb.append("role Academics Faculty ->\n");
+        sb.append("{\n");
+        sb.append("Professor:{\n");
+        insertPersons(sb, folder, index);
+        sb.append("}(\""+deptName+"("+schoolName+"("+univName+"))\")\n");
+        sb.append("}\n");
+    }
+    
+    public static void insertPersons(StringBuilder sb, String folder, int index) {
+        try {
+            String text = FileUtils.readFileToString(new File(faculty+folder+"/"+index+".txt"));
+            String[] persons =text.split("\r\n\r\n");
+            for (int i=0; i<persons.length; i++) {
+                String photo = null;
+                String name = null;
+                String web = null;
+                String position = null;
+                String email = null;
+                String phone = null;
+                String[] attrs = persons[i].split("\r\n");
+                for (String attr: attrs) {
+                    String[] pair = attr.split("==");
+                    if (pair.length == 2 ) {
+                        if (pair[0].equals("photo")) {
+                            photo = pair[1];
+                        } else if (pair[0].equals("name")) {
+                            name = pair[1];
+                        } else if (pair[0].equals("web")) {
+                            web = pair[1];
+                        } else if (pair[0].equals("position")) {
+                            position = pair[1];
+                        } else if (pair[0].equals("email")) {
+                            email = pair[1];
+                        } else if (pair[0].equals("phone")) {
+                            phone = pair[1];
+                        }
+                    }
+                }
+                sb.append("\""+name+"\"[");
+                List<String> temp = new ArrayList<String>();
+                if (photo != null) {
+                    temp.add("@photo:\""+photo+"\"");
+                }
+                if (web != null) {
+                    temp.add("@homepage:\""+web+"\"");
+                }
+                if (position != null) {
+                    temp.add("@position:\""+position+"\"");
+                }
+                if (email != null) {
+                    temp.add("@email:\""+email+"\"");
+                }
+                if (phone != null) {
+                    temp.add("@phone:\""+phone+"\"");
+                }
+                for (int j=0; j<temp.size(); j++) {
+                    if (j != temp.size()-1) {
+                        sb.append(temp.get(j)+",");
+                    } else {
+                        sb.append(temp.get(j));
+                    }
+                }
+                if (i != persons.length-1) {
+                    sb.append("],\n");
+                } else  sb.append("]\n");
+            }
+        } catch (IOException ex) {
+            Logger.getLogger(Controller.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
     
     public static List<String> getKeywords(String file) throws FileNotFoundException, IOException {
