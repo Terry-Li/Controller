@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.commons.io.FileUtils;
 
 /**
@@ -100,6 +102,7 @@ public class Controller {
         List<List<String>> departments = getDepartments(filename);
         int index = 0;
         StringBuilder deptSB = new StringBuilder();
+        String folder = filename.split("\\.")[0];
         if (departments != null) {
             for (List<String> dept : departments) {
                 if (dept.size() == 1) {
@@ -111,13 +114,24 @@ public class Controller {
                     }
                     String[] tokens = dept.get(0).split("==");
                     if (tokens.length == 4 && !tokens[3].equals("null")) {
-                        insertSchoolFaculty(sb, univName, schoolName, index, filename);
+                        if (new File(faculty+folder+"/"+index+".txt").exists()) {
+                            insertSchoolFaculty(sb, univName, schoolName, index, filename);
+                            sb.append("\n");
+                        }
                         index++;
                     }
                     sb.append("];\n\n");
                 } else {
                     sb.append("insert Faculties \"" + dept.get(0).split("==")[1] + "\" (\"" + univName + "\")[\n");
                     sb.append("@website:\"" + dept.get(0).split("==")[2] + "\",\n");
+                    String[] parts = dept.get(0).split("==");
+                    if (parts.length == 4 && !parts[3].equals("null")) {
+                        if (new File(faculty+folder+"/"+index+".txt").exists()) {
+                            insertSchoolFaculty(sb, univName, parts[1], index, filename);
+                            sb.append(",\n");
+                        }
+                        index++;
+                    }
                     sb.append("contain departments: {\n");
                     for (int j = 1; j < dept.size(); j++) {
                         if (j != dept.size() - 1) {
@@ -125,29 +139,45 @@ public class Controller {
                         } else {
                             sb.append("\"" + dept.get(j).split("==")[1] + "\"\n");
                         }
+                        String[] tokens = dept.get(j).split("==");
+                        if (tokens.length == 4 && !tokens[2].equals("null")) {
+                            if (!tokens[3].equals("null")) {
+                                deptSB.append("insert Departments \""+tokens[1]+"\"(\""+dept.get(0).split("==")[1]+"("+univName+")\")[\n");
+                                deptSB.append("@website:\""+tokens[2]+"\",\n");
+                                if (new File(faculty+folder+"/"+index+".txt").exists()) {
+                                    insertDeptFaculty(deptSB, univName, dept.get(0).split("==")[1], tokens[1], index, filename);
+                                }
+                                index++;
+                                deptSB.append("];\n\n");
+                            } else {
+                                deptSB.append("insert Departments \""+tokens[1]+"\"(\""+dept.get(0).split("==")[1]+"("+univName+")\")[\n");
+                                deptSB.append("@website:\""+tokens[2]+"\"\n");
+                                deptSB.append("];\n\n");
+                            }
+                        }
                     }
                     sb.append("}(\"" + dept.get(0).split("==")[1] + "(" + univName + ")\")\n");
                     sb.append("];\n\n");
                 }
             }
         }
-        FileUtils.write(new File(insert+filename), sb.toString());
+        FileUtils.write(new File(insert+filename), sb.toString()+deptSB.toString());
     }
     
     public static void insertSchoolFaculty(StringBuilder sb, String univName, String schoolName, int index, String filename){
         String folder = filename.split("\\.")[0];
-        if (!new File(faculty+folder+"/"+index+".txt").exists()) return;
+        //if (!new File(faculty+folder+"/"+index+".txt").exists()) return;
         sb.append("role Academics Faculty ->\n");
         sb.append("{\n");
         sb.append("Professor:{\n");
         insertPersons(sb, folder, index);
         sb.append("}(\""+schoolName+"("+univName+")\")\n");
-        sb.append("}\n");
+        sb.append("}");
     }
     
     public static void insertDeptFaculty(StringBuilder sb, String univName, String schoolName, String deptName, int index, String filename){
         String folder = filename.split("\\.")[0];
-        if (!new File(faculty+folder+"/"+index+".txt").exists()) return;
+        //if (!new File(faculty+folder+"/"+index+".txt").exists()) return;
         sb.append("role Academics Faculty ->\n");
         sb.append("{\n");
         sb.append("Professor:{\n");
@@ -160,6 +190,7 @@ public class Controller {
         try {
             String text = FileUtils.readFileToString(new File(faculty+folder+"/"+index+".txt"));
             String[] persons =text.split("\r\n\r\n");
+            Pattern p = Pattern.compile(".*\"(.*)\".*");
             for (int i=0; i<persons.length; i++) {
                 String photo = null;
                 String name = null;
@@ -172,7 +203,10 @@ public class Controller {
                     String[] pair = attr.split("==");
                     if (pair.length == 2 ) {
                         if (pair[0].equals("photo")) {
-                            photo = pair[1];
+                            Matcher m = p.matcher(pair[1]);
+                            if (m.find()) {
+                                photo = m.group(1);
+                            }
                         } else if (pair[0].equals("name")) {
                             name = pair[1];
                         } else if (pair[0].equals("web")) {
@@ -186,23 +220,25 @@ public class Controller {
                         }
                     }
                 }
-                sb.append("\""+name+"\"[");
+                if (name == null) { name = "Not Found";}
+                sb.append("\""+name.replaceAll("\"", "")+"\"");
                 List<String> temp = new ArrayList<String>();
                 if (photo != null) {
-                    temp.add("@photo:\""+photo+"\"");
+                    temp.add("@photo:\""+photo.replaceAll("\"", "") +"\"");
                 }
                 if (web != null) {
-                    temp.add("@homepage:\""+web+"\"");
+                    temp.add("@homepage:\""+web.replaceAll("\"", "")+"\"");
                 }
                 if (position != null) {
-                    temp.add("@position:\""+position+"\"");
+                    temp.add("@position:\""+position.replaceAll("\"", "")+"\"");
                 }
                 if (email != null) {
-                    temp.add("@email:\""+email+"\"");
+                    temp.add("@email:\""+email.replaceAll("\"", "")+"\"");
                 }
                 if (phone != null) {
-                    temp.add("@phone:\""+phone+"\"");
+                    temp.add("@phone:\""+phone.replaceAll("\"", "")+"\"");
                 }
+                if (temp.size()!=0) sb.append("[");
                 for (int j=0; j<temp.size(); j++) {
                     if (j != temp.size()-1) {
                         sb.append(temp.get(j)+",");
@@ -210,9 +246,19 @@ public class Controller {
                         sb.append(temp.get(j));
                     }
                 }
-                if (i != persons.length-1) {
-                    sb.append("],\n");
-                } else  sb.append("]\n");
+                if (temp.size() != 0) {
+                    if (i != persons.length - 1) {
+                        sb.append("],\n");
+                    } else {
+                        sb.append("]\n");
+                    }
+                } else {
+                    if (i != persons.length - 1) {
+                        sb.append(",\n");
+                    } else {
+                        sb.append("\n");
+                    }
+                }
             }
         } catch (IOException ex) {
             Logger.getLogger(Controller.class.getName()).log(Level.SEVERE, null, ex);
