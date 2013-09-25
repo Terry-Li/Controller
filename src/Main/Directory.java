@@ -14,8 +14,8 @@ import org.apache.commons.io.FileUtils;
  * @author lyf
  */
 public class Directory {
-    public static String database = "C:/Users/admin/Desktop/Database/";
-    public static String directory = "C:/Users/admin/Desktop/Directory/";
+    public static String database = "C:/Users/Yifeng/Desktop/Database/";
+    public static String directory = "C:/Users/Yifeng/Desktop/Directory/";
     public static void main(String[] args) throws IOException {
         File[] files = new File(database).listFiles();
         for (File file: files) {

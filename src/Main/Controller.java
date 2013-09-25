@@ -18,9 +18,10 @@ import org.apache.commons.io.FileUtils;
  * @author lyf
  */
 public class Controller {
-    public static String database = "C:/Users/admin/Desktop/Database/";
-    public static String insert = "C:/Users/admin/Desktop/Insert/";
-    public static String faculty = "C:/Users/admin/Desktop/96 Faculty/";
+    public static String database = "C:/Users/Yifeng/Desktop/Database/";
+    public static String insert = "C:/Users/Yifeng/Desktop/Insert/";
+    public static String faculty = "C:/Users/Yifeng/Desktop/96 Faculty/";
+    public static String wiki = "C:/Users/Yifeng/Desktop/WikiResults/";
     
     public static void main(String[] args) throws FileNotFoundException, IOException {
         List<String> univs = getKeywords("Elite96.txt");
@@ -31,6 +32,35 @@ public class Controller {
             }
             insertUniv(univs.get(i),filename);
         }
+        //insertWiki(new StringBuilder(), "18.txt");
+    }
+    
+    public static void insertWiki(StringBuilder sb, String filename) throws IOException {
+        if (!new File(wiki+filename).exists()) return;
+        String file = FileUtils.readFileToString(new File(wiki+filename));
+        String[] blocks = file.split("\n");
+        for (String block: blocks) {
+            String[] pair = block.split("==");
+            if (pair.length != 2) continue;
+            if (pair[0].equals("Type") && pair[1].toLowerCase().contains("public")) {
+                sb.append("@\"type\":Public,\n");
+            } else if (pair[0].equals("Type") && pair[1].toLowerCase().contains("private")) {
+                sb.append("@\"type\":Private,\n");
+            } else if (pair[0].equals("Motto")) {
+                pair[1] = pair[1].replaceAll("\"", "");
+                sb.append("@motto:\""+pair[1]+"\",\n");               
+            } else if (pair[0].equals("Established")) {
+                sb.append("@founded:\""+pair[1]+"\",\n");
+            } else if (pair[0].equals("President")) {
+                pair[1] = pair[1].replaceAll("\"", "");
+                sb.append("role President:\""+pair[1]+"\",\n");
+            } else if (pair[0].equals("Location")) {
+                String[] triple = pair[1].split(", ");
+                if (triple.length == 3)
+                sb.append("normal address:City \""+triple[0]+"("+triple[1]+")\",\n");
+            } 
+        }
+        //System.out.println(sb.toString());
     }
     
     public static List<String> getSchools(String filename) throws IOException{
@@ -77,12 +107,14 @@ public class Controller {
         return schools;
     }
     
+    
     public static void insertUniv(String univ, String filename) throws IOException{
         StringBuilder sb = new StringBuilder();
         String univName = univ.split("==")[0];
         String univUrl = univ.split("==")[1];
         sb.append("insert University \""+univName+"\" [\n");
         sb.append("@webSite:\""+univUrl+"\",\n");
+        insertWiki(sb, filename);
         List<String> schools = getSchools(filename);
         if (schools != null) {
             sb.append("contain academics -> {\n");
@@ -233,7 +265,7 @@ public class Controller {
                     temp.add("@position:\""+position.replaceAll("\"", "")+"\"");
                 }
                 if (email != null) {
-                    temp.add("@email:\""+email.replaceAll("\"", "")+"\"");
+                    temp.add("@email:\""+email.replaceAll("\"", "").replace("mailto:", "")+"\"");
                 }
                 if (phone != null) {
                     temp.add("@phone:\""+phone.replaceAll("\"", "")+"\"");

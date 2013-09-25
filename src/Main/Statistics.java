@@ -14,8 +14,8 @@ import org.apache.commons.io.FileUtils;
  * @author lyf
  */
 public class Statistics {
-    public static String schoolBase = "C:/Users/admin/Desktop/Database/";
-    public static String profBase = "C:/Users/admin/Desktop/96 Faculty/";
+    public static String schoolBase = "C:/Users/Yifeng/Desktop/Database/";
+    public static String profBase = "C:/Users/Yifeng/Desktop/96 Faculty/";
     
     public static int schoolCount() throws IOException{
         int count = 0;
